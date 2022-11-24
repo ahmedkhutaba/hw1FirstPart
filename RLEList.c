@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #define TURN_TO_STRING(a) (#a)
 
@@ -52,7 +53,7 @@ RLEListResult RLEListAppend(RLEList list, char value)
         list->letter = value;
         list->occur += 1;
     }
-    // if not we create a new node (after the dummy node if the list is "empty (empty here means it only has the dummy node")
+        // if not we create a new node (after the dummy node if the list is "empty (empty here means it only has the dummy node")
     else
     {
         RLEList newNode = malloc(sizeof(RLEList_t));
@@ -116,6 +117,11 @@ RLEListResult RLEListRemove(RLEList list, int index)
         }
         currNode = currNode->next;
     }
+    assert(counter < listLength);
+    assert(listLength > 0);
+    assert(currNode != NULL);
+    assert(currNode->occur != 0);
+    assert(currNode->letter != 0);
     // after the while loop we have currNode pointing at node we want to remove from
     // there are 2 basic casses
     // case 1 when we remove on letter when there is more than 1
@@ -125,37 +131,42 @@ RLEListResult RLEListRemove(RLEList list, int index)
     }
     else // currNode->occur == 1
     {
-        if (prevNode == currNode)
+        assert(currNode->occur == 1);
+        if (list->next == NULL)
         {
-            if (listLength == 1)
+            list->occur = 0;
+            list->letter = 0;
+        }
+        else // list->next != NULL , this means we at least have 2 nodes
+        {
+            if (prevNode == currNode) // should "delete" the "first" node
             {
-                currNode->letter = 0;
-                currNode->occur = 0;
+                // move the contents of the second node to the first one and then delete the second node
+                RLEList toDelete = list->next;
+                list->letter = list->next->letter;
+                list->occur = list->next->occur;
+                list->next = list->next->next;
+                free(toDelete);
             }
             else
             {
-                RLEList toDelete = currNode;
-                currNode = currNode->next;
-                prevNode = prevNode->next;
-                free(toDelete);
-            }
-        }
-        else
-        {
-            RLEList toDelete = currNode;
-            currNode = currNode->next;
-            prevNode->next = currNode;
-            free(toDelete);
-            if ((currNode != NULL) && (prevNode->letter == currNode->letter))
-            {
-                prevNode->occur += currNode->occur;
+                assert(prevNode->next == currNode);
                 RLEList toDelete = currNode;
                 currNode = currNode->next;
                 prevNode->next = currNode;
                 free(toDelete);
+                if ((currNode != NULL) && (prevNode->letter == currNode->letter))
+                {
+                    prevNode->occur += currNode->occur;
+                    RLEList toDelete = currNode;
+                    currNode = currNode->next;
+                    prevNode->next = currNode;
+                    free(toDelete);
+                }
             }
         }
     }
+    //printf("\nits 7\n");
     // we have everything removed now
     return RLE_LIST_SUCCESS;
 }
@@ -274,4 +285,3 @@ RLEListResult RLEListMap(RLEList list, MapFunction map_function)
     }
     return RLE_LIST_SUCCESS;
 }
-
