@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define TURN_TO_STRING(a) (#a)
+#define ZERO_ASSCI '0'
 
 typedef struct RLEList_t{
     char letter;
@@ -220,33 +220,40 @@ char* RLEListExportToString(RLEList list, RLEListResult* result)
         return 0;
     }
     RLEList temp = list;
-    int stringLength = 1;
+    int stringLength = 0;
     while (temp && !((temp->letter == 0) && (temp->occur == 0)))
     {
-        stringLength += 1 + strlen(TURN_TO_STRING(temp->occur)) + 1;
+        stringLength += 1 + countDigits(temp->occur) + 1;
         temp = temp->next;
     }
-    char *string = malloc(stringLength);
+    char *string = malloc(stringLength + 1);
     if (string == NULL)
     {
-        // what should we return?
         if (result)
         {
             *result = RLE_LIST_OUT_OF_MEMORY;
         }
         return NULL;
     }
-    int i = 0;
-    while (list->next)
+
+    
+    int index = 0;
+    while (list && !((list->letter == 0) && (list->occur == 0)))
     {
+        string[index] = list->letter;
+        int digits = countDigits(list->occur);
+        int tempNum = list->occur;
+        for (int i = digits; i > 0; i--)
+        {
+            string[index + i] = ZERO_ASSCI + (tempNum % 10);
+            tempNum /= 10;
+        }
+        index += digits + 1;
+        string[index++] = '\n';
         list = list->next;
-        string[i] = list->letter;
-        strcpy(string+i+1, TURN_TO_STRING(list->occur));
-        i += 1 + strlen(TURN_TO_STRING(list->occur));//???????????????????????????
-        string[i] = '\n';
-        i++;
     }
-    string[i] = '\0';
+    string[index] = '\0';
+    
     if (result)
     {
         *result = RLE_LIST_SUCCESS;
@@ -256,19 +263,19 @@ char* RLEListExportToString(RLEList list, RLEListResult* result)
 
 RLEListResult RLEListMap(RLEList list, MapFunction map_function)
 {
-    if (list == NULL)
+    if ((list == NULL) || (map_function == NULL))
     {
         return RLE_LIST_NULL_ARGUMENT;
     }
+    assert(list);
     RLEList temp = list;
-    while (temp)
+    while (temp && !((temp->letter == 0) && (temp->occur == 0)))
     {
         temp->letter = map_function(temp->letter);
         temp = temp->next;
     }
     RLEList nextNode = list->next;
-    while (nextNode)
-    {
+    while (nextNode) { // at least 2 nodes
         if(list->letter == nextNode->letter)
         {
             list->occur += nextNode->occur;
@@ -276,12 +283,28 @@ RLEListResult RLEListMap(RLEList list, MapFunction map_function)
             nextNode = nextNode->next;
             list->next = nextNode;
             free(toDelete);
-        }
-        list = list->next;
-        if(nextNode)
+        } // after the if we have deleted the second of the 2 nodes
+        else // if the if didnt happen this means we can continue with nodes
         {
             nextNode = nextNode->next;
+            list = list->next;
         }
     }
     return RLE_LIST_SUCCESS;
+}
+
+//------------------------ my functions ------------------------//
+int countDigits(int number)
+{
+    if (number < 0)
+    {
+        return -1;
+    }
+    int counter = 0;
+    while (number)
+    {
+        counter++;
+        number /= 10;
+    }
+    return counter;
 }
